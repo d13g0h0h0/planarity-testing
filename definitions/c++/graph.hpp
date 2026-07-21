@@ -4,38 +4,114 @@
 #include <vector>
 #include <set>
 #include <map>
+#include <deque>
+#include <stack>
 #include <algorithm>
 #include <iterator>
-#include <deque>
 #include <numeric>
 #include <stdexcept>
 
 class Graph
 {
+public:
     using Vertex = size_t;
     using Edge = std::pair<Vertex, Vertex>;
+private:
     size_t vertex_count;
     size_t edge_count;
     Vertex max_vertex;
     std::set<Vertex> vertex_set;
+    bool dirty_bit;
 
     using AdjMap = std::map<Vertex, std::set<Vertex>>;
     AdjMap adj_list;
-public:
-    explicit Graph(const std::set<Edge>& pairs)
+
+    struct StackFrame
     {
-        Vertex max = 0;
-        vertex_set = {};
-        for (auto [fst, snd] : pairs)
+        Vertex current;
+        Vertex parent;
+        size_t child_index;
+        size_t children_count;
+        bool is_root;
+    };
+
+    struct BiCompContext
+    {
+        std::map<Vertex, bool> visited;
+        std::stack<Edge> edge_stack;
+        std::vector<std::set<Vertex>> result;
+    };
+
+    void dfs_iterative(Vertex start, BiCompContext& context)
+    {
+        size_t timer = 0;
+        std::map<Vertex, size_t> disc, low_point;
+        std::stack<StackFrame> call_stack;
+
+        call_stack.push({start, 0, 0, 0, true});
+        context.visited[start] = true;
+        disc[start] = low_point[start] = ++timer;
+
+        while (!call_stack.empty())
         {
-            max = std::max({max, fst, snd});
-            adj_list[fst].emplace(snd);
-            adj_list[snd].emplace(fst);
-            vertex_set.emplace(fst);
-            vertex_set.emplace(snd);
+            StackFrame &f = call_stack.top();
+            Vertex u = f.current;
+            if (f.child_index < adj_list[u].size())
+            {
+                auto it = adj_list[u].begin();
+                std::advance(it, f.child_index);
+                Vertex v = *it;
+                f.child_index++;
+
+                if (v == f.parent) continue;
+                if (!context.visited[v])
+                {
+                    f.children_count++;
+                    context.edge_stack.push({u, v});
+                    context.visited[v] = true;
+                    disc[v] = low_point[v] = ++timer;
+                    call_stack.push({v, u, 0, 0, false});
+                }
+                else if (disc[v] < disc[u])
+                {
+                    context.edge_stack.push({u, v});
+                    low_point[u] = std::min(low_point[u], disc[v]);
+                }
+            }
+            else
+            {
+                call_stack.pop();
+                if (!call_stack.empty())
+                {
+                    StackFrame &parent_f = call_stack.top();
+                    Vertex parent_u = parent_f.current;
+                    low_point[parent_u] = std::min(low_point[parent_u], low_point[u]);
+
+                    if ((parent_f.is_root && parent_f.children_count > 1) ||
+                        (!parent_f.is_root && low_point[u] >= disc[parent_u]))
+                    {
+                        std::set<Vertex> component;
+                        while (!context.edge_stack.empty() &&
+                            !(context.edge_stack.top().first == parent_u && context.edge_stack.top().second == u))
+                        {
+                            component.insert(context.edge_stack.top().first);
+                            component.insert(context.edge_stack.top().second);
+                            context.edge_stack.pop();
+                        }
+                        component.insert(context.edge_stack.top().first);
+                        component.insert(context.edge_stack.top().second);
+                        context.edge_stack.pop();
+                        context.result.push_back(component);
+                    }
+                }
+            }
         }
-        max_vertex = max;
+    }
+
+    void calc_params()
+    {
         vertex_count = vertex_set.size();
+        max_vertex = vertex_set.empty() ? 0 : *vertex_set.rbegin();
         edge_count = std::accumulate(
             adj_list.begin(),
             adj_list.end(),
@@ -45,13 +121,26 @@ public:
                 auto& [key, value] = pair;
                 return acc + value.size();
             }) / 2;
+        dirty_bit = false;
+    }
+
+public:
+    explicit Graph(const std::set<Edge>& pairs)
+    {
+        vertex_set = {};
+        for (auto [fst, snd] : pairs)
+        {
+            adj_list[fst].emplace(snd);
+            adj_list[snd].emplace(fst);
+            vertex_set.emplace(fst);
+            vertex_set.emplace(snd);
+        }
+        calc_params();
     }
 
     explicit Graph(const std::set<Vertex>& vertices, const AdjMap& edges)
     {
         vertex_set = vertices;
-        vertex_count = vertices.size();
-        max_vertex = *vertices.rbegin();
         adj_list = {};
         for (auto vertex : vertices)
         {
@@ -65,20 +154,34 @@ public:
                 adj_list[vertex] = {};
             }
         }
-        edge_count = std::accumulate(
-            adj_list.begin(),
-            adj_list.end(),
-            size_t{},
-            [](const size_t acc, const auto& pair)
-            {
-                auto& [key, value] = pair;
-                return acc + value.size();
-            }) / 2;
+        calc_params();
     }
 
-    [[nodiscard]] size_t edges() const
+    void addEdge(Vertex u, Vertex v)
     {
+        vertex_set.insert(u);
+        vertex_set.insert(v);
+        adj_list[u].insert(v);
+        adj_list[v].insert(u);
+        dirty_bit = true;
+    }
+
+    [[nodiscard]] size_t get_edge_count()
+    {
+        if (dirty_bit)
+        {
+            calc_params();
+        }
         return edge_count;
+    }
+
+    [[nodiscard]] size_t get_vertex_count()
+    {
+        if (dirty_bit)
+        {
+            calc_params();
+        }
+        return vertex_count;
     }
 
     [[nodiscard]] std::vector<Graph> get_connected_components()
@@ -112,6 +215,42 @@ public:
             }
             result.push_back(Graph(component, adj_list));
         }
+        return result;
+    }
+
+    ///
+    /// Returns an @verbatim std::vector @endverbatim of biconnected components.
+    /// @return a vector of biconnected components
+    [[nodiscard]] std::vector<Graph> get_biconnected_components()
+    {
+        std::vector<Graph> result{};
+        BiCompContext context{};
+        for (Vertex v : vertex_set)
+        {
+            if (!context.visited[v])
+            {
+                dfs_iterative(v, context);
+                if (!context.edge_stack.empty())
+                {
+                    std::set<Vertex> component;
+                    while (!context.edge_stack.empty())
+                    {
+                        component.insert(context.edge_stack.top().first);
+                        component.insert(context.edge_stack.top().second);
+                        context.edge_stack.pop();
+                    }
+                    context.result.push_back(component);
+                }
+            }
+        }
+        std::ranges::transform(context.result,
+                               std::back_insert_iterator<std::vector<Graph>>(result),
+                               [this](const std::set<Vertex>& set)
+                               {
+                                   return Graph(set, this->adj_list);
+                               });
+
+
         return result;
     }
 };
