@@ -11,16 +11,16 @@ class FindUnion
     std::map<T, T> parent;
     std::map<T, size_t> rank;
 public:
-    void add(T element)
+    void add(const T& element)
     {
         set.insert(element);
         parent[element] = element;
         rank[element] = 0;
     }
 
-    T& find(T& element)
+    T find(const T& element)
     {
-        T& par = parent[element];
+        T par = parent[element];
         if (par == element)
         {
             return element;
@@ -29,10 +29,10 @@ public:
         return find(par);
     }
 
-    void link(T& u, T& v)
+    void link(const T& u, const T& v)
     {
-        T& u_root = find(u);
-        T& v_root = find(v);
+        T u_root = find(u);
+        T v_root = find(v);
         if (u_root == v_root) return;
         if (rank[u_root] > rank[v_root])
         {
@@ -48,7 +48,7 @@ public:
         ++rank[v_root];
     }
 
-    bool is_same(T& u, T& v)
+    bool is_same(const T& u, const T& v)
     {
         return find(u) == find(v);
     }

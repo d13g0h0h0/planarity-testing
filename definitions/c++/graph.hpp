@@ -17,11 +17,11 @@ public:
     using Vertex = size_t;
     using Edge = std::pair<Vertex, Vertex>;
 private:
-    size_t vertex_count;
-    size_t edge_count;
-    Vertex max_vertex;
+    mutable size_t vertex_count{};
+    mutable size_t edge_count{};
+    mutable Vertex max_vertex{};
     std::set<Vertex> vertex_set;
-    bool dirty_bit;
+    mutable bool dirty_bit{};
 
     using AdjMap = std::map<Vertex, std::set<Vertex>>;
     AdjMap adj_list;
@@ -42,7 +42,7 @@ private:
         std::vector<std::set<Vertex>> result;
     };
 
-    void dfs_iterative(Vertex start, BiCompContext& context)
+    void dfs_iterative(Vertex start, BiCompContext& context) const
     {
         size_t timer = 0;
         std::map<Vertex, size_t> disc, low_point;
@@ -56,9 +56,9 @@ private:
         {
             StackFrame &f = call_stack.top();
             Vertex u = f.current;
-            if (f.child_index < adj_list[u].size())
+            if (f.child_index < adj_list.at(u).size())
             {
-                auto it = adj_list[u].begin();
+                auto it = adj_list.at(u).begin();
                 std::advance(it, f.child_index);
                 Vertex v = *it;
                 f.child_index++;
@@ -67,14 +67,14 @@ private:
                 if (!context.visited[v])
                 {
                     f.children_count++;
-                    context.edge_stack.push({u, v});
+                    context.edge_stack.emplace(u, v);
                     context.visited[v] = true;
                     disc[v] = low_point[v] = ++timer;
                     call_stack.push({v, u, 0, 0, false});
                 }
                 else if (disc[v] < disc[u])
                 {
-                    context.edge_stack.push({u, v});
+                    context.edge_stack.emplace(u, v);
                     low_point[u] = std::min(low_point[u], disc[v]);
                 }
             }
@@ -108,7 +108,7 @@ private:
         }
     }
 
-    void calc_params()
+    void calc_params() const
     {
         vertex_count = vertex_set.size();
         max_vertex = vertex_set.empty() ? 0 : *vertex_set.rbegin();
@@ -138,6 +138,10 @@ public:
         calc_params();
     }
 
+    explicit Graph(const std::vector<Vertex>& vertices, const AdjMap& edges) : Graph(
+        std::set<Vertex>{vertices.begin(), vertices.end()},
+        edges){}
+
     explicit Graph(const std::set<Vertex>& vertices, const AdjMap& edges)
     {
         vertex_set = vertices;
@@ -157,7 +161,36 @@ public:
         calc_params();
     }
 
-    void addEdge(Vertex u, Vertex v)
+    static Graph get_cycle(const std::vector<Vertex>& cycle)
+    {
+        std::set<Edge> edges;
+        const Vertex first = cycle.front();
+        Vertex u = first;
+        size_t i = 1;
+        const size_t size = cycle.size();
+        Vertex v = cycle.at(i++);
+        edges.insert({u, v});
+        while (i < size - 1)
+        {
+            Vertex temp = v;
+            v = cycle.at(i++);
+            u = temp;
+            edges.insert({u, v});
+        }
+        edges.insert({v, first});
+        return Graph{edges};
+    }
+
+    void add_vertex(Vertex v)
+    {
+        vertex_set.insert(v);
+        if (!adj_list.contains(v))
+        {
+            adj_list[v] = {};
+        }
+    }
+
+    void add_edge(Vertex u, Vertex v)
     {
         vertex_set.insert(u);
         vertex_set.insert(v);
@@ -166,7 +199,7 @@ public:
         dirty_bit = true;
     }
 
-    [[nodiscard]] size_t get_edge_count()
+    [[nodiscard]] size_t get_edge_count() const
     {
         if (dirty_bit)
         {
@@ -175,13 +208,41 @@ public:
         return edge_count;
     }
 
-    [[nodiscard]] size_t get_vertex_count()
+    [[nodiscard]] size_t get_vertex_count() const
     {
         if (dirty_bit)
         {
             calc_params();
         }
         return vertex_count;
+    }
+
+    [[nodiscard]] auto& vertices() const
+    {
+        return vertex_set;
+    }
+
+    [[nodiscard]] auto& edges() const
+    {
+        return adj_list;
+    }
+
+    [[nodiscard]] std::set<Edge> edges_iterator() const
+    {
+        std::set<Edge> result{};
+        for (const auto& [u, snd] : adj_list)
+        {
+            for (auto v : snd)
+            {
+                result.insert({u, v});
+            }
+        }
+        return result;
+    }
+
+    [[nodiscard]] bool contains(const Vertex v) const
+    {
+        return vertices().contains(v);
     }
 
     [[nodiscard]] std::vector<Graph> get_connected_components()
@@ -213,15 +274,15 @@ public:
                     }
                 }
             }
-            result.push_back(Graph(component, adj_list));
+            result.emplace_back(component, adj_list);
         }
         return result;
     }
 
     ///
-    /// Returns an @verbatim std::vector @endverbatim of biconnected components.
+    /// Returns a @verbatim std::vector @endverbatim of biconnected components.
     /// @return a vector of biconnected components
-    [[nodiscard]] std::vector<Graph> get_biconnected_components()
+    [[nodiscard]] std::vector<Graph> get_biconnected_components() const
     {
         std::vector<Graph> result{};
         BiCompContext context{};
