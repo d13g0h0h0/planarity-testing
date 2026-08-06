@@ -3,8 +3,8 @@
 
 #include <variant>
 
-#include "graph.hpp"
-#include "find-union.hpp"
+#include "../graph/graph.hpp"
+#include "../utils/find-union.hpp"
 
 using Vertex = Graph::Vertex;
 using Edge = Graph::Edge;
@@ -271,7 +271,7 @@ inline void embed_path(std::vector<Face>& faces,
 
 inline bool is_planar_bicomp(const Graph& graph)
 {
-    if (graph.get_edge_count() == 1) return true;
+    if (graph.get_edge_count() <= 1) return true;
 
     std::vector<Vertex> cycle = get_cycle(graph);
     Graph H = Graph::get_cycle(cycle);
