@@ -291,17 +291,14 @@ public:
             if (!context.visited[v])
             {
                 dfs_iterative(v, context);
-                if (!context.edge_stack.empty())
+                std::set<Vertex> component;
+                while (!context.edge_stack.empty())
                 {
-                    std::set<Vertex> component;
-                    while (!context.edge_stack.empty())
-                    {
-                        component.insert(context.edge_stack.top().first);
-                        component.insert(context.edge_stack.top().second);
-                        context.edge_stack.pop();
-                    }
-                    context.result.push_back(component);
+                    component.insert(context.edge_stack.top().first);
+                    component.insert(context.edge_stack.top().second);
+                    context.edge_stack.pop();
                 }
+                context.result.push_back(component);
             }
         }
         std::ranges::transform(context.result,
