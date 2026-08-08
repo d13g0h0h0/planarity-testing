@@ -1,6 +1,6 @@
 #include <iostream>
-#include "graph/graph.hpp"
-#include "demoucron/demoucron.hpp"
+#include "../include/planarity_testing/graph.hpp"
+#include "../include/planarity_testing/demoucron.hpp"
 
 int main()
 {

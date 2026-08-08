@@ -1,6 +1,4 @@
 .idea
-.clangd
 *.exe
 c++/build
 c++/cmake-build-debug
-c++/.clangd

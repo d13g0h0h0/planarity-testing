@@ -47,7 +47,7 @@ public:
         parent[u_root] = v_root;
         ++rank[v_root];
     }
-
+    
     bool is_same(const T& u, const T& v)
     {
         return find(u) == find(v);

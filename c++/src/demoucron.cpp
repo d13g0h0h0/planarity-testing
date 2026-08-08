@@ -1,10 +1,8 @@
-#ifndef PLANARITY_TESTING_DEMOUCRON_HPP
-#define PLANARITY_TESTING_DEMOUCRON_HPP
-
+#include <algorithm>
 #include <variant>
 
-#include "../graph/graph.hpp"
-#include "../utils/find-union.hpp"
+#include "find-union.hpp"
+#include "planarity_testing/graph.hpp"
 
 using Vertex = Graph::Vertex;
 using Edge = Graph::Edge;
@@ -323,7 +321,7 @@ inline bool is_planar_bicomp(const Graph& graph)
     return true;
 }
 
-inline bool is_planar_demoucron(const Graph& graph)
+bool is_planar_demoucron(const Graph& graph)
 {
     std::vector<Graph> bicomps = graph.get_biconnected_components();
     for (const Graph& comp : bicomps)
@@ -335,5 +333,3 @@ inline bool is_planar_demoucron(const Graph& graph)
     }
     return true;
 }
-
-#endif //PLANARITY_TESTING_DEMOUCRON_HPP
