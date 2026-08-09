@@ -13,3 +13,13 @@ target_include_directories(
         planarity_lib PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable(
+        planarity_main
+        main.cpp
+)
+
+target_link_libraries(
+        planarity_main PRIVATE
+        planarity_lib
+)

@@ -200,6 +200,7 @@ inline std::vector<Vertex> get_fragment_path(
         path.push_back(current);
         current = parent[current];
     }
+    path.push_back(source);
     std::ranges::reverse(path);
     return path;
 }
