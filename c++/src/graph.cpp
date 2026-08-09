@@ -137,7 +137,7 @@ Graph Graph::get_cycle(const std::vector<Vertex>& cycle)
     const size_t size = cycle.size();
     Vertex v = cycle.at(i++);
     edges.insert({u, v});
-    while (i < size - 1)
+    while (i < size)
     {
         Vertex temp = v;
         v = cycle.at(i++);
