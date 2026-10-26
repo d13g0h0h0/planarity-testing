@@ -31,17 +31,20 @@ inline std::vector<Vertex> get_cycle(const Graph& graph)
     Vertex current = get_next_neighbor(start, start, adj_list);
     visited[current] = true;
     queue.push_back(current);
-    while (true)
+    for (bool already_visited = false; !already_visited;)
     {
         const Vertex temp = current;
         current = get_next_neighbor(current, parent, adj_list);
         parent = temp;
         if (visited[current])
         {
-            break;
+            already_visited = true;
         }
-        visited[current] = true;
-        queue.push_back(current);
+        else
+        {
+            visited[current] = true;
+            queue.push_back(current);
+        }
     }
     while (queue.front() != current)
     {
